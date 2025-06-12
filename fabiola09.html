@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DragonBallZ Api</title>
+    <title> Personajes Api</title>
 </head>
 <body>
     <style>
@@ -153,23 +153,49 @@
     </header>
     <main id="main"></main>
     <script>
-        const API_URL = 'https://dragonball-api.com/api/characters';
+        const API_HP = 'https://hp-api.onrender.com/api/characters';
+        const API_RICK = 'https://rickandmortyapi.com/api/character';
         const main = document.getElementById('main');
         const form = document.getElementById('form');
         const search = document.getElementById('search');
 
-        getCharacters(API_URL);
+        getAllCharacters();
 
-        async function getCharacters(url) {
-            const res = await fetch(url);
-            const data = await res.json();
-            showCharacters(data.items || data);
+        async function getAllCharacters() {
+            const [rmRes, hpRes] = await Promise.all([
+                fetch(API_RICK).then(res => res.json()),
+                fetch(API_HP).then(res => res.json())
+            ]);
+
+            const rickChars = rmRes.results || [];
+            const hpChars = hpRes || [];
+            showCharacters([...rickChars, ...hpChars]);
         }
 
         function showCharacters(characters) {
             main.innerHTML = '';
             characters.forEach((char) => {
-                const { id, name, image, ki, maxKi, description, race } = char;
+                // Detecta de qué API es el personaje
+                let id, name, image, ki, maxKi, description, race;
+                if (char.hasOwnProperty('status') && char.hasOwnProperty('origin')) {
+                    // Rick and Morty
+                    id = char.id;
+                    name = char.name;
+                    image = char.image;
+                    ki = char.status;
+                    maxKi = char.type || 'N/A';
+                    description = `<strong>Origen:</strong> ${char.origin?.name || ''}`;
+                    race = char.species || '';
+                } else {
+                    // Harry Potter
+                    id = char.id || '';
+                    name = char.name;
+                    image = char.image || 'https://upload.wikimedia.org/wikipedia/commons/a/ac/No_image_available.svg';
+                    ki = char.wand?.wood || 'N/A';
+                    maxKi = char.wand?.core || 'N/A';
+                    description = `<strong>Casa:</strong> ${char.house || 'Desconocida'}<br><strong>Patronus:</strong> ${char.patronus || 'Desconocido'}<br><strong>Actor:</strong> ${char.actor || 'Desconocido'}`;
+                    race = char.species || '';
+                }
                 const charElement = document.createElement('div');
                 charElement.classList.add('personaje');
                 charElement.innerHTML = `
@@ -192,11 +218,17 @@
             });
         }
 
-        form.addEventListener('submit', (e) => {
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const searchTerm = search.value.toLowerCase();
+            const searchTerm = search.value.trim().toLowerCase();
             if (searchTerm && searchTerm !== '') {
-                getCharacters(API_URL + `?name=${searchTerm}`);
+                const [rmRes, hpRes] = await Promise.all([
+                    fetch(API_RICK).then(res => res.json()),
+                    fetch(API_HP).then(res => res.json())
+                ]);
+                const rickChars = (rmRes.results || []).filter(char => char.name.toLowerCase().includes(searchTerm));
+                const hpChars = (hpRes || []).filter(char => char.name.toLowerCase().includes(searchTerm));
+                showCharacters([...rickChars, ...hpChars]);
                 search.value = '';
             } else {
                 window.location.reload();
